@@ -59,6 +59,8 @@
     "@remix-run/node": "^2.3.1",
     "@remix-run/react": "^2.3.1",
     "@remix-run/server-runtime": "^2.3.1",
+    "@rocicorp/rails": "^0.9.0",
+    "@rocicorp/reflect": "^0.38.202312080119",
     "@sentry/profiling-node": "^1.2.6",
     "@sentry/remix": "^7.83.0",
     "address": "^2.0.1",

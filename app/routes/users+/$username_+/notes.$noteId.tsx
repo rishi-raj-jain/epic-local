@@ -8,6 +8,9 @@ import {
 	useActionData,
 	useLoaderData,
 	type MetaFunction,
+	ClientLoaderFunctionArgs,
+	useNavigate,
+	useParams,
 } from '@remix-run/react'
 import { formatDistanceToNow } from 'date-fns'
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
@@ -29,94 +32,41 @@ import {
 import { redirectWithToast } from '#app/utils/toast.server.ts'
 import { useOptionalUser } from '#app/utils/user.ts'
 import { type loader as notesLoader } from './notes.tsx'
-
-export async function loader({ params }: DataFunctionArgs) {
-	const note = await prisma.note.findUnique({
-		where: { id: params.noteId },
-		select: {
-			id: true,
-			title: true,
-			content: true,
-			ownerId: true,
-			updatedAt: true,
-			images: {
-				select: {
-					id: true,
-					altText: true,
-				},
-			},
-		},
-	})
-
-	invariantResponse(note, 'Not found', { status: 404 })
-
-	const date = new Date(note.updatedAt)
-	const timeAgo = formatDistanceToNow(date)
-
-	return json({
-		note,
-		timeAgo,
-	})
-}
+import { r } from '#app/entry.client.tsx'
+import { useSubscribe } from '@rocicorp/reflect/react'
+import { getNote } from '#app/mutators.ts'
+import { useEffect, useState } from 'react'
 
 const DeleteFormSchema = z.object({
 	intent: z.literal('delete-note'),
 	noteId: z.string(),
 })
 
-export async function action({ request }: DataFunctionArgs) {
-	const userId = await requireUserId(request)
-	const formData = await request.formData()
-	await validateCSRF(formData, request.headers)
-	const submission = parse(formData, {
-		schema: DeleteFormSchema,
-	})
-	if (submission.intent !== 'submit') {
-		return json({ status: 'idle', submission } as const)
-	}
-	if (!submission.value) {
-		return json({ status: 'error', submission } as const, { status: 400 })
-	}
-
-	const { noteId } = submission.value
-
-	const note = await prisma.note.findFirst({
-		select: { id: true, ownerId: true, owner: { select: { username: true } } },
-		where: { id: noteId },
-	})
-	invariantResponse(note, 'Not found', { status: 404 })
-
-	const isOwner = note.ownerId === userId
-	await requireUserWithPermission(
-		request,
-		isOwner ? `delete:note:own` : `delete:note:any`,
-	)
-
-	await prisma.note.delete({ where: { id: note.id } })
-
-	return redirectWithToast(`/users/${note.owner.username}/notes`, {
-		type: 'success',
-		title: 'Success',
-		description: 'Your note has been deleted.',
-	})
-}
-
 export default function NoteRoute() {
-	const data = useLoaderData<typeof loader>()
 	const user = useOptionalUser()
-	const isOwner = user?.id === data.note.ownerId
+	const navigate = useNavigate()
+	const { noteId, username } = useParams()
+	const [data, setData] = useState({ note: {} })
+	const isOwner = user?.id === data.note?.ownerId
 	const canDelete = userHasPermission(
 		user,
 		isOwner ? `delete:note:own` : `delete:note:any`,
 	)
 	const displayBar = canDelete || isOwner
-
+	useEffect(() => {
+		r.subscribe(
+			tx => getNote(tx, noteId as string),
+			value => {
+				setData({ note: value })
+			},
+		)
+	}, [noteId])
 	return (
 		<div className="absolute inset-0 flex flex-col px-10">
-			<h2 className="mb-2 pt-12 text-h2 lg:mb-6">{data.note.title}</h2>
+			<h2 className="mb-2 pt-12 text-h2 lg:mb-6">{data.note?.title}</h2>
 			<div className={`${displayBar ? 'pb-24' : 'pb-12'} overflow-y-auto`}>
 				<ul className="flex flex-wrap gap-5 py-5">
-					{data.note.images.map(image => (
+					{data.note?.images?.map(image => (
 						<li key={image.id}>
 							<a href={getNoteImgSrc(image.id)}>
 								<img
@@ -129,18 +79,18 @@ export default function NoteRoute() {
 					))}
 				</ul>
 				<p className="whitespace-break-spaces text-sm md:text-lg">
-					{data.note.content}
+					{data.note?.content}
 				</p>
 			</div>
 			{displayBar ? (
 				<div className={floatingToolbarClassName}>
-					<span className="text-sm text-foreground/90 max-[524px]:hidden">
+					{/* <span className="text-sm text-foreground/90 max-[524px]:hidden">
 						<Icon name="clock" className="scale-125">
 							{data.timeAgo} ago
 						</Icon>
-					</span>
+					</span> */}
 					<div className="grid flex-1 grid-cols-2 justify-end gap-2 min-[525px]:flex md:gap-4">
-						{canDelete ? <DeleteNote id={data.note.id} /> : null}
+						{canDelete ? <DeleteNote id={data.note?.id} /> : null}
 						<Button
 							asChild
 							className="min-[525px]:max-md:aspect-square min-[525px]:max-md:px-0"
@@ -159,11 +109,23 @@ export default function NoteRoute() {
 }
 
 export function DeleteNote({ id }: { id: string }) {
+	const { username } = useParams()
+	const navigate = useNavigate()
 	const actionData = useActionData<typeof action>()
 	const isPending = useIsPending()
 	const [form] = useForm({
 		id: 'delete-note',
 		lastSubmission: actionData?.submission,
+		onSubmit(event, context) {
+			event.preventDefault()
+			const tmp = parse(context.formData, { schema: DeleteFormSchema }).value
+			// delete the todo from list
+			if (tmp?.noteId) {
+				r.mutate.deleteNote(tmp.noteId)
+				// when deleted, get back to all the notes
+				navigate(`/users/${username}/notes`)
+			}
+		},
 	})
 
 	return (
@@ -196,9 +158,9 @@ export const meta: MetaFunction<
 		m => m.id === 'routes/users+/$username_+/notes',
 	)
 	const displayName = notesMatch?.data?.owner.name ?? params.username
-	const noteTitle = data?.note.title ?? 'Note'
+	const noteTitle = data?.note?.title ?? 'Note'
 	const noteContentsSummary =
-		data && data.note.content.length > 100
+		data && data.note?.content.length > 100
 			? data?.note.content.slice(0, 97) + '...'
 			: 'No content'
 	return [

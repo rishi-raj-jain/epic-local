@@ -6,6 +6,7 @@ import {
 	useForm,
 	type FieldConfig,
 } from '@conform-to/react'
+import { useLocation, useNavigate, useParams } from '@remix-run/react'
 import { getFieldsetConstraint, parse } from '@conform-to/zod'
 import { createId as cuid } from '@paralleldrive/cuid2'
 import { type Note, type NoteImage } from '@prisma/client'
@@ -33,6 +34,7 @@ import { requireUserId } from '#app/utils/auth.server.ts'
 import { validateCSRF } from '#app/utils/csrf.server.ts'
 import { prisma } from '#app/utils/db.server.ts'
 import { cn, getNoteImgSrc, useIsPending } from '#app/utils/misc.tsx'
+import { r } from '#app/entry.client'
 
 const titleMinLength = 1
 const titleMaxLength = 100
@@ -73,110 +75,6 @@ const NoteEditorSchema = z.object({
 	images: z.array(ImageFieldsetSchema).max(5).optional(),
 })
 
-export async function action({ request }: DataFunctionArgs) {
-	const userId = await requireUserId(request)
-
-	const formData = await parseMultipartFormData(
-		request,
-		createMemoryUploadHandler({ maxPartSize: MAX_UPLOAD_SIZE }),
-	)
-	await validateCSRF(formData, request.headers)
-
-	const submission = await parse(formData, {
-		schema: NoteEditorSchema.superRefine(async (data, ctx) => {
-			if (!data.id) return
-
-			const note = await prisma.note.findUnique({
-				select: { id: true },
-				where: { id: data.id, ownerId: userId },
-			})
-			if (!note) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					message: 'Note not found',
-				})
-			}
-		}).transform(async ({ images = [], ...data }) => {
-			return {
-				...data,
-				imageUpdates: await Promise.all(
-					images.filter(imageHasId).map(async i => {
-						if (imageHasFile(i)) {
-							return {
-								id: i.id,
-								altText: i.altText,
-								contentType: i.file.type,
-								blob: Buffer.from(await i.file.arrayBuffer()),
-							}
-						} else {
-							return {
-								id: i.id,
-								altText: i.altText,
-							}
-						}
-					}),
-				),
-				newImages: await Promise.all(
-					images
-						.filter(imageHasFile)
-						.filter(i => !i.id)
-						.map(async image => {
-							return {
-								altText: image.altText,
-								contentType: image.file.type,
-								blob: Buffer.from(await image.file.arrayBuffer()),
-							}
-						}),
-				),
-			}
-		}),
-		async: true,
-	})
-
-	if (submission.intent !== 'submit') {
-		return json({ submission } as const)
-	}
-
-	if (!submission.value) {
-		return json({ submission } as const, { status: 400 })
-	}
-
-	const {
-		id: noteId,
-		title,
-		content,
-		imageUpdates = [],
-		newImages = [],
-	} = submission.value
-
-	const updatedNote = await prisma.note.upsert({
-		select: { id: true, owner: { select: { username: true } } },
-		where: { id: noteId ?? '__new_note__' },
-		create: {
-			ownerId: userId,
-			title,
-			content,
-			images: { create: newImages },
-		},
-		update: {
-			title,
-			content,
-			images: {
-				deleteMany: { id: { notIn: imageUpdates.map(i => i.id) } },
-				updateMany: imageUpdates.map(updates => ({
-					where: { id: updates.id },
-					data: { ...updates, id: updates.blob ? cuid() : updates.id },
-				})),
-				create: newImages,
-			},
-		},
-	})
-
-	return redirect(
-		`/users/${updatedNote.owner.username}/notes/${updatedNote.id}`,
-	)
-}
-
 export function NoteEditor({
 	note,
 }: {
@@ -186,9 +84,12 @@ export function NoteEditor({
 		}
 	>
 }) {
+	const location = useLocation()
+	if (!location.pathname.includes('/new') && !note.images) return <></>
+	const { username } = useParams()
+	const navigate = useNavigate()
 	const actionData = useActionData<typeof action>()
 	const isPending = useIsPending()
-
 	const [form, fields] = useForm({
 		id: 'note-editor',
 		constraint: getFieldsetConstraint(NoteEditorSchema),
@@ -201,9 +102,31 @@ export function NoteEditor({
 			content: note?.content ?? '',
 			images: note?.images ?? [{}],
 		},
+		onSubmit(event, context) {
+			event.preventDefault()
+			const tmp = parse(context.formData, { schema: NoteEditorSchema }).value
+			if (tmp) {
+				let newTodo = false
+				if (!tmp.id) {
+					newTodo = true
+					tmp['id'] = new Date().getTime().toString()
+				}
+				if (!tmp.id.startsWith(`${username}_`)) {
+					tmp['id'] = `${username}_${tmp['id']}`
+				}
+				tmp.images?.forEach((i, _) => {
+					delete i['file']
+				})
+				const newNoteObject = { ...tmp, updatedAt: new Date().toString() }
+				// Update todo
+				if (newTodo) r.mutate.putNote(newNoteObject)
+				// Create todo
+				else r.mutate.updateNote(newNoteObject)
+				navigate(`/users/${username}/notes/${tmp.id}`)
+			}
+		},
 	})
 	const imageList = useFieldList(form.ref, fields.images)
-
 	return (
 		<div className="absolute inset-0">
 			<Form
