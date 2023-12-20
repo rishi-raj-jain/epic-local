@@ -14,6 +14,7 @@ export const r = new Reflect({
 	roomID: 'myRoom',
 	userID: 'myUser',
 	mutators,
+	kvStore: 'idb'
 })
 
 startTransition(() => {
