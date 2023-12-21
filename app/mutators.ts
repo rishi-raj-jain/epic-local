@@ -1,4 +1,4 @@
-import { Note } from '@prisma/client'
+import { type Note } from '@prisma/client'
 import { generate } from '@rocicorp/rails'
 
 export const {

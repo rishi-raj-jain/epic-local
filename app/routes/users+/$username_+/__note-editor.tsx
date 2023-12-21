@@ -52,6 +52,7 @@ const ImageFieldsetSchema = z.object({
 			return !file || file.size <= MAX_UPLOAD_SIZE
 		}, 'File size must be less than 3MB'),
 	altText: z.string().optional(),
+	base64Image: z.string().optional(),
 })
 
 type ImageFieldset = z.infer<typeof ImageFieldsetSchema>
@@ -90,6 +91,26 @@ export function NoteEditor({
 	const navigate = useNavigate()
 	const actionData = useActionData<typeof action>()
 	const isPending = useIsPending()
+	function resizeImageFromDataUrl(
+		dataUrl: string,
+		width: number,
+		height: number,
+	): string | any {
+		return new Promise((resolve, reject) => {
+			const img = new Image()
+			img.onload = () => {
+				const canvas = document.createElement('canvas')
+				canvas.width = width
+				canvas.height = height
+				const ctx = canvas.getContext('2d')
+				if (ctx) ctx.drawImage(img, 0, 0, width, height)
+				const resizedDataUrl = canvas.toDataURL('image/png')
+				resolve(resizedDataUrl)
+			}
+			img.onerror = reject
+			img.src = dataUrl
+		})
+	}
 	const [form, fields] = useForm({
 		id: 'note-editor',
 		constraint: getFieldsetConstraint(NoteEditorSchema),
@@ -102,7 +123,7 @@ export function NoteEditor({
 			content: note?.content ?? '',
 			images: note?.images ?? [{}],
 		},
-		onSubmit(event, context) {
+		async onSubmit(event, context) {
 			event.preventDefault()
 			const tmp = parse(context.formData, { schema: NoteEditorSchema }).value
 			if (tmp) {
@@ -111,14 +132,36 @@ export function NoteEditor({
 					newTodo = true
 					tmp['id'] = new Date().getTime().toString()
 				}
-				tmp.images?.forEach((i, _) => {
-					delete i['file']
-				})
+				if (tmp.images) {
+					for (let _ = 0; _ < tmp.images.length; _++) {
+						const i = tmp.images[_]
+						// Create id if it's not there
+						if (!i['id']) i['id'] = `img_${_}`
+						// Fetch the image from the client side
+						const imgElement = document.querySelector(
+							`[for="note-editor-images[${_}].file"] img`,
+						)
+						if (imgElement) {
+							const imageBuffer = imgElement.getAttribute('src')
+							// Set the file computed on the client
+							if (imageBuffer) {
+								const resizedDataUrl = await resizeImageFromDataUrl(
+									imageBuffer,
+									128,
+									128,
+								)
+								if (resizedDataUrl) i['base64Image'] = resizedDataUrl
+							}
+						}
+					}
+				}
 				const newNoteObject = { ...tmp, updatedAt: new Date().toString() }
+				console.log(newNoteObject)
 				// Update todo
 				if (newTodo) r.mutate.putNote(newNoteObject)
 				// Create todo
 				else r.mutate.updateNote(newNoteObject)
+				// navigate to the new/old todo
 				navigate(`/users/${username}/notes/${tmp.id}`)
 			}
 		},
@@ -219,7 +262,11 @@ function ImageChooser({
 	const fields = useFieldset(ref, config)
 	const existingImage = Boolean(fields.id.defaultValue)
 	const [previewImage, setPreviewImage] = useState<string | null>(
-		fields.id.defaultValue ? getNoteImgSrc(fields.id.defaultValue) : null,
+		fields.id.defaultValue
+			? fields.base64Image.defaultValue
+				? fields.base64Image.defaultValue
+				: getNoteImgSrc(fields.id.defaultValue)
+			: null,
 	)
 	const [altText, setAltText] = useState(fields.altText.defaultValue ?? '')
 

@@ -1,3 +1,4 @@
+import { type NoteImage } from '@prisma/client'
 import { useForm } from '@conform-to/react'
 import { parse } from '@conform-to/zod'
 import { invariantResponse } from '@epic-web/invariant'
@@ -65,13 +66,17 @@ export default function NoteRoute() {
 			<h2 className="mb-2 pt-12 text-h2 lg:mb-6">{data.note?.title}</h2>
 			<div className={`${displayBar ? 'pb-24' : 'pb-12'} overflow-y-auto`}>
 				<ul className="flex flex-wrap gap-5 py-5">
-					{data.note?.images?.map(image => (
+					{data.note?.images?.map((image: NoteImage, _: number) => (
 						<li key={image.id}>
 							<a href={getNoteImgSrc(image.id)}>
 								<img
-									src={getNoteImgSrc(image.id)}
 									alt={image.altText ?? ''}
 									className="h-32 w-32 rounded-lg object-cover"
+									src={
+										image.base64Image
+											? image.base64Image
+											: getNoteImgSrc(image.id)
+									}
 								/>
 							</a>
 						</li>
