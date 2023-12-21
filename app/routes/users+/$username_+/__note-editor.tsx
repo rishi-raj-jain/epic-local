@@ -135,6 +135,7 @@ export function NoteEditor({
 				if (tmp.images) {
 					for (let _ = 0; _ < tmp.images.length; _++) {
 						const i = tmp.images[_]
+						delete i['file']
 						// Create id if it's not there
 						if (!i['id']) i['id'] = `img_${_}`
 						// Fetch the image from the client side
