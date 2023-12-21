@@ -18,7 +18,7 @@ import {
 	type DataFunctionArgs,
 	type SerializeFrom,
 } from '@remix-run/node'
-import { Form, useActionData } from '@remix-run/react'
+import { Form } from '@remix-run/react'
 import { useEffect, useRef, useState } from 'react'
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
 import { z } from 'zod'
@@ -35,6 +35,7 @@ import { validateCSRF } from '#app/utils/csrf.server.ts'
 import { prisma } from '#app/utils/db.server.ts'
 import { cn, getNoteImgSrc, useIsPending } from '#app/utils/misc.tsx'
 import { r } from '#app/entry.client'
+import { useOptionalUser } from '#app/utils/user'
 
 const titleMinLength = 1
 const titleMaxLength = 100
@@ -87,9 +88,9 @@ export function NoteEditor({
 }) {
 	const location = useLocation()
 	if (!location.pathname.includes('/new') && !note.images) return <></>
-	const { username } = useParams()
+	const user = useOptionalUser()
 	const navigate = useNavigate()
-	const actionData = useActionData<typeof action>()
+	const { username } = useParams()
 	const isPending = useIsPending()
 	function resizeImageFromDataUrl(
 		dataUrl: string,
@@ -114,7 +115,6 @@ export function NoteEditor({
 	const [form, fields] = useForm({
 		id: 'note-editor',
 		constraint: getFieldsetConstraint(NoteEditorSchema),
-		lastSubmission: actionData?.submission,
 		onValidate({ formData }) {
 			return parse(formData, { schema: NoteEditorSchema })
 		},
@@ -157,13 +157,20 @@ export function NoteEditor({
 					}
 				}
 				const newNoteObject = { ...tmp, updatedAt: new Date().toString() }
-				console.log(newNoteObject)
-				// Update todo
-				if (newTodo) r.mutate.putNote(newNoteObject)
 				// Create todo
-				else r.mutate.updateNote(newNoteObject)
-				// navigate to the new/old todo
-				navigate(`/users/${username}/notes/${tmp.id}`)
+				if (newTodo) {
+					if (user?.id) {
+						r.mutate.putNote({ ...newNoteObject, ownerId: user.id })
+						// navigate to the new/old todo
+						navigate(`/users/${username}/notes/${tmp.id}`)
+					}
+				}
+				// Update todo
+				else {
+					r.mutate.updateNote(newNoteObject)
+					// navigate to the new/old todo
+					navigate(`/users/${username}/notes/${tmp.id}`)
+				}
 			}
 		},
 	})
