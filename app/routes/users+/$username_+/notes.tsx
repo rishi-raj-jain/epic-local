@@ -34,7 +34,7 @@ export default function NotesRoute() {
 	const ownerDisplayName = data.owner.name ?? data.owner.username
 	const navLinkDefaultClassName =
 		'line-clamp-2 block rounded-l-full py-2 pl-8 pr-6 text-base lg:text-xl'
-	const all_list = useSubscribe(r, listNotes, [])
+	const allNotes = useSubscribe(r, listNotes, [])
 	return (
 		<main className="container flex h-full min-h-[400px] px-0 pb-12 md:px-8">
 			<div className="grid w-full grid-cols-4 bg-muted pl-2 md:container md:mx-2 md:rounded-3xl md:pr-0">
@@ -66,8 +66,8 @@ export default function NotesRoute() {
 									</NavLink>
 								</li>
 							) : null}
-							{all_list.map((note, inde) => (
-								<li key={inde} className="p-1 pr-0">
+							{allNotes.map((note, index) => (
+								<li key={index} className="p-1 pr-0">
 									<NavLink
 										to={note.id}
 										preventScrollReset

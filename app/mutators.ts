@@ -1,27 +1,18 @@
-import { generate } from "@rocicorp/rails";
-
-type Notes = {
-  id: string;
-  title: string;
-  content: string;
-  images?: {
-    id?: string | undefined;
-    altText?: string | undefined;
-  }[];
-}
+import { Note } from '@prisma/client'
+import { generate } from '@rocicorp/rails'
 
 export const {
-  set: putNote,
-  get: getNote,
-  list: listNotes,
-  update: updateNote,
-  delete: deleteNote,
-} = generate<Notes>("notes");
+	set: putNote,
+	get: getNote,
+	list: listNotes,
+	update: updateNote,
+	delete: deleteNote,
+} = generate<Note>('notes')
 
 export const mutators = {
-  putNote,
-  getNote,
-  listNotes,
-  updateNote,
-  deleteNote,
+	putNote,
+	getNote,
+	listNotes,
+	updateNote,
+	deleteNote,
 }

@@ -1,20 +1,19 @@
-import { RemixBrowser } from '@remix-run/react'
+import { mutators } from './mutators'
 import { startTransition } from 'react'
 import { hydrateRoot } from 'react-dom/client'
+import { RemixBrowser } from '@remix-run/react'
+import { Reflect } from '@rocicorp/reflect/client'
 
 if (ENV.MODE === 'production' && ENV.SENTRY_DSN) {
 	import('./utils/monitoring.client.tsx').then(({ init }) => init())
 }
 
-import { Reflect } from '@rocicorp/reflect/client'
-import { mutators } from './mutators'
-
 export const r = new Reflect({
-	server: 'http://localhost:8080',
+	mutators,
+	kvStore: 'idb',
 	roomID: 'myRoom',
 	userID: 'myUser',
-	mutators,
-	kvStore: 'idb'
+	server: 'http://localhost:8080',
 })
 
 startTransition(() => {

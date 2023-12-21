@@ -1,7 +1,7 @@
-import { mutators } from "../app/mutators";
- 
+import { mutators } from '../app/mutators'
+
 export default function makeOptions() {
-  return {
-    mutators,
-  };
+	return {
+		mutators,
+	}
 }

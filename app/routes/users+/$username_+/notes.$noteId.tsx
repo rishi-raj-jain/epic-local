@@ -44,7 +44,6 @@ const DeleteFormSchema = z.object({
 
 export default function NoteRoute() {
 	const user = useOptionalUser()
-	const navigate = useNavigate()
 	const { noteId, username } = useParams()
 	const [data, setData] = useState({ note: {} })
 	const isOwner = user?.id === data.note?.ownerId

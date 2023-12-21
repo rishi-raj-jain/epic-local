@@ -1,9 +1,9 @@
 {
-    "compilerOptions": {
-      "lib": ["esnext"],
-      "moduleResolution": "node",
-      "declaration": true,
-      "incremental": true
-    },
-    "include": ["**/*.ts"]
-  }
+  "compilerOptions": {
+    "lib": ["esnext"],
+    "moduleResolution": "node",
+    "declaration": true,
+    "incremental": true
+  },
+  "include": ["**/*.ts"]
+}

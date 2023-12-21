@@ -19,7 +19,7 @@ import {
 	type SerializeFrom,
 } from '@remix-run/node'
 import { Form, useActionData } from '@remix-run/react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
 import { z } from 'zod'
 import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
@@ -127,6 +127,9 @@ export function NoteEditor({
 		},
 	})
 	const imageList = useFieldList(form.ref, fields.images)
+	useEffect(() => {
+		if (form.ref.current) form.ref.current.reset()
+	}, [note])
 	return (
 		<div className="absolute inset-0">
 			<Form
