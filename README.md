@@ -1,3 +1,12 @@
+To run this:
+
+```bash
+git clone https://github.com/rishi-raj-jain/epic-local
+npm install
+cp .env.example .env
+npx prisma migrate reset
+```
+
 <div align="center">
   <h1 align="center"><a href="https://www.epicweb.dev/epic-stack">The Epic Stack 🚀</a></h1>
   <strong align="center">
