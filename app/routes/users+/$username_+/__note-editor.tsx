@@ -111,9 +111,6 @@ export function NoteEditor({
 					newTodo = true
 					tmp['id'] = new Date().getTime().toString()
 				}
-				if (!tmp.id.startsWith(`${username}_`)) {
-					tmp['id'] = `${username}_${tmp['id']}`
-				}
 				tmp.images?.forEach((i, _) => {
 					delete i['file']
 				})
