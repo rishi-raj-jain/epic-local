@@ -41,7 +41,7 @@ export default function NotesRoute() {
 				clearInterval(clientReflectInterval)
 				window.r.subscribe(
 					tx => listNotes(tx),
-					value => {
+					(value: any) => {
 						setAllNotes(value)
 					},
 				)
