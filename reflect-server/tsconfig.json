@@ -5,5 +5,6 @@
     "declaration": true,
     "incremental": true
   },
-  "include": ["**/*.ts"]
+  "include": ["**/*.ts", "../app/mutators.ts"],
+  "extends": "../tsconfig.json"
 }

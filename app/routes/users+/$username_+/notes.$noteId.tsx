@@ -33,7 +33,6 @@ import {
 import { redirectWithToast } from '#app/utils/toast.server.ts'
 import { useOptionalUser } from '#app/utils/user.ts'
 import { type loader as notesLoader } from './notes.tsx'
-import { r } from '#app/entry.client.tsx'
 import { useSubscribe } from '@rocicorp/reflect/react'
 import { getNote } from '#app/mutators.ts'
 import { useEffect, useState } from 'react'
@@ -54,12 +53,17 @@ export default function NoteRoute() {
 	)
 	const displayBar = canDelete || isOwner
 	useEffect(() => {
-		r.subscribe(
-			tx => getNote(tx, noteId as string),
-			value => {
-				setData({ note: value })
-			},
-		)
+		const clientReflectInterval = setInterval(() => {
+			if (window.r) {
+				clearInterval(clientReflectInterval)
+				window.r.subscribe(
+					tx => getNote(tx, noteId as string),
+					value => {
+						setData({ note: value })
+					},
+				)
+			}
+		}, 1)
 	}, [noteId])
 	return (
 		<div className="absolute inset-0 flex flex-col px-10">
@@ -129,9 +133,12 @@ export function DeleteNote({ id }: { id: string }) {
 			const tmp = parse(context.formData, { schema: DeleteFormSchema }).value
 			// delete the todo from list
 			if (tmp?.noteId) {
-				r.mutate.deleteNote(tmp.noteId)
-				// when deleted, get back to all the notes
-				navigate(`/users/${username}/notes`)
+				if (window.r) {
+					window.r.mutate.deleteNote(tmp.noteId).then(() => {
+						// when deleted, get back to all the notes
+						navigate(`/users/${username}/notes`)
+					})
+				}
 			}
 		},
 	})

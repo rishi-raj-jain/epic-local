@@ -34,7 +34,6 @@ import { requireUserId } from '#app/utils/auth.server.ts'
 import { validateCSRF } from '#app/utils/csrf.server.ts'
 import { prisma } from '#app/utils/db.server.ts'
 import { cn, getNoteImgSrc, useIsPending } from '#app/utils/misc.tsx'
-import { r } from '#app/entry.client'
 import { useOptionalUser } from '#app/utils/user'
 
 const titleMinLength = 1
@@ -160,14 +159,24 @@ export function NoteEditor({
 				// Create todo
 				if (newTodo) {
 					if (user?.id) {
-						r.mutate.putNote({ ...newNoteObject, ownerId: user.id })
+						const clientReflectInterval = setInterval(() => {
+							if (window.r) {
+								clearInterval(clientReflectInterval)
+								window.r.mutate.putNote({ ...newNoteObject, ownerId: user.id })
+							}
+						}, 1)
 						// navigate to the new/old todo
 						navigate(`/users/${username}/notes/${tmp.id}`)
 					}
 				}
 				// Update todo
 				else {
-					r.mutate.updateNote(newNoteObject)
+					const clientReflectInterval = setInterval(() => {
+						if (window.r) {
+							clearInterval(clientReflectInterval)
+							window.r.mutate.updateNote(newNoteObject)
+						}
+					}, 1)
 					// navigate to the new/old todo
 					navigate(`/users/${username}/notes/${tmp.id}`)
 				}

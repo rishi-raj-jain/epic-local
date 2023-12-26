@@ -1,5 +1,6 @@
-import { useForm } from '@conform-to/react'
 import { parse } from '@conform-to/zod'
+import { useForm } from '@conform-to/react'
+import { Reflect } from '@rocicorp/reflect/client'
 import { cssBundleHref } from '@remix-run/css-bundle'
 import {
 	json,
@@ -24,7 +25,7 @@ import {
 	useSubmit,
 } from '@remix-run/react'
 import { withSentry } from '@sentry/remix'
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { AuthenticityTokenProvider } from 'remix-utils/csrf/react'
 import { HoneypotProvider } from 'remix-utils/honeypot/react'
 import { z } from 'zod'
@@ -56,6 +57,7 @@ import { type Theme, setTheme, getTheme } from './utils/theme.server.ts'
 import { makeTimings, time } from './utils/timing.server.ts'
 import { getToast } from './utils/toast.server.ts'
 import { useOptionalUser, useUser } from './utils/user.ts'
+import { mutators } from './mutators.ts'
 
 export const links: LinksFunction = () => {
 	return [
@@ -224,14 +226,38 @@ function Document({
 }
 
 function App() {
-	const data = useLoaderData<typeof loader>()
 	const nonce = useNonce()
-	const user = useOptionalUser()
 	const theme = useTheme()
 	const matches = useMatches()
+	const user = useOptionalUser()
+	const data = useLoaderData<typeof loader>()
 	const isOnSearchPage = matches.find(m => m.id === 'routes/users+/index')
 	const searchBar = isOnSearchPage ? null : <SearchBar status="idle" />
-
+	useEffect(() => {
+		fetch('/reflect')
+			.then(res => res.json())
+			.then(res => {
+				if (res) {
+					window.r = new Reflect({
+						mutators,
+						auth: res.token,
+						kvStore: 'idb',
+						roomID: 'myRoom',
+						userID: res.userId,
+						server: 'http://localhost:8080',
+					})
+				}
+			})
+			.catch(e => {
+				window.r = new Reflect({
+					mutators,
+					kvStore: 'idb',
+					roomID: 'myRoom',
+					userID: 'myUser',
+					server: 'http://localhost:8080',
+				})
+			})
+	}, [])
 	return (
 		<Document nonce={nonce} theme={theme} env={data.ENV}>
 			<div className="flex h-screen flex-col justify-between">

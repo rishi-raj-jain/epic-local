@@ -6,9 +6,9 @@ import { Icon } from '#app/components/ui/icon.tsx'
 import { prisma } from '#app/utils/db.server.ts'
 import { cn, getUserImgSrc } from '#app/utils/misc.tsx'
 import { useOptionalUser } from '#app/utils/user.ts'
-import { r } from '#app/entry.client'
 import { useSubscribe } from '@rocicorp/reflect/react'
 import { listNotes } from '#app/mutators'
+import { useEffect, useState } from 'react'
 
 export async function loader({ params }: DataFunctionArgs) {
 	const owner = await prisma.user.findFirst({
@@ -28,13 +28,26 @@ export async function loader({ params }: DataFunctionArgs) {
 }
 
 export default function NotesRoute() {
-	const data = useLoaderData<typeof loader>()
 	const user = useOptionalUser()
+	const data = useLoaderData<typeof loader>()
 	const isOwner = user?.id === data.owner.id
 	const ownerDisplayName = data.owner.name ?? data.owner.username
 	const navLinkDefaultClassName =
 		'line-clamp-2 block rounded-l-full py-2 pl-8 pr-6 text-base lg:text-xl'
-	const allNotes = useSubscribe(r, listNotes, [])
+	const [allNotes, setAllNotes] = useState([])
+	useEffect(() => {
+		const clientReflectInterval = setInterval(() => {
+			if (window.r) {
+				clearInterval(clientReflectInterval)
+				window.r.subscribe(
+					tx => listNotes(tx),
+					value => {
+						setAllNotes(value)
+					},
+				)
+			}
+		}, 1)
+	}, [])
 	return (
 		<main className="container flex h-full min-h-[400px] px-0 pb-12 md:px-8">
 			<div className="grid w-full grid-cols-4 bg-muted pl-2 md:container md:mx-2 md:rounded-3xl md:pr-0">
