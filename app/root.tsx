@@ -238,6 +238,8 @@ function App() {
 			.then(res => res.json())
 			.then(res => {
 				if (res) {
+					// If there's a session, pass the token as auth
+					// Also, return the userId to match it on the server
 					window.r = new Reflect({
 						mutators,
 						auth: res.token,
@@ -249,6 +251,7 @@ function App() {
 				}
 			})
 			.catch(e => {
+				// If there's no session, hardcode the room configurations
 				window.r = new Reflect({
 					mutators,
 					kvStore: 'idb',
