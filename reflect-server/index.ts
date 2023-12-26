@@ -3,20 +3,7 @@ import type {
 	AuthHandler,
 	ReflectServerOptions,
 } from '@rocicorp/reflect/server'
-
-type ReadonlyJSONValue =
-	| null
-	| string
-	| boolean
-	| number
-	| ReadonlyArray<ReadonlyJSONValue>
-	| ReadonlyJSONObject
-
-type ReadonlyJSONObject = {
-	readonly [key: string]: ReadonlyJSONValue | undefined
-}
-
-type AuthData = ReadonlyJSONObject & { readonly userID: string }
+import type { AuthData } from '@rocicorp/reflect'
 
 export type MyAuthData = AuthData & { access: 'read' | 'write' }
 

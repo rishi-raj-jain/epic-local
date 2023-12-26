@@ -12,10 +12,15 @@ npm run dev & npx reflect dev
 
 The important bits are:
 
-- Learn about Reflect [rooms](https://hello.reflect.net/concepts/rooms) and [auth](https://hello.reflect.net/how/auth)
-- Instead of fetching data via `loader`, data is fetched on the client side and mutations are authorized on the server so that they can run only for the authenticated user.
-- `/reflect` is an added endpoint that helps authorize and verify the user with jsonwebtoken
-- `root.tsx` contains the criticial piece of code that fetches and creates a logged in user room for Reflect to make changes into
+- Learn about Reflect [rooms](https://hello.reflect.net/concepts/rooms) and
+  [auth](https://hello.reflect.net/how/auth)
+- Instead of fetching data via `loader`, data is fetched on the client side and
+  mutations are authorized on the server so that they can run only for the
+  authenticated user.
+- `/reflect` is an added endpoint that helps authorize and verify the user with
+  jsonwebtoken
+- `root.tsx` contains the criticial piece of code that fetches and creates a
+  logged in user room for Reflect to make changes into
 
 <div align="center">
   <h1 align="center"><a href="https://www.epicweb.dev/epic-stack">The Epic Stack 🚀</a></h1>
